@@ -1,0 +1,22 @@
+{
+  "name": "mybot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ogal7/botKitTutorial.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ogal7/botKitTutorial/issues"
+  },
+  "homepage": "https://github.com/ogal7/botKitTutorial#readme",
+  "dependencies": {
+    "botkit": "^0.6.21"
+  }
+}
