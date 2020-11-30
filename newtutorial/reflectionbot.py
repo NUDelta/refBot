@@ -29,7 +29,7 @@ class reflectionBot:
 		elif question == 8:
 			return [{"type": "section", "text": {"type": "mrkdwn", "text": "When do you plan to do it?"}}]
 		elif question == 9:
-			return [{"type": "section", "text": {"type": "mrkdwn", "text": "Dope ill remind u then"}}]
+			return [{"type": "section", "text": {"type": "mrkdwn", "text": "I will remind you then!"}}]
 
 
 

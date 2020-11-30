@@ -6,23 +6,29 @@ from slackeventsapi import SlackEventAdapter
 from reflectionbot import reflectionBot
 import data
 from flask_pymongo import PyMongo
-from celery import Celery
+import redis
+import time
+from rq import Queue
+from reminder import background_task
+import natural_time
+from datetime import datetime
+from datetime import date
 
 
 mongo = PyMongo()
 
 
-# Initialize a Flask app to host the events adapter
 app = Flask(__name__)
-app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
-app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
 
-celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
-celery.conf.update(app.config)
 # Create an events adapter and register it to an endpoint in the slack app for event injestion.
 slack_events_adapter = SlackEventAdapter(os.environ.get("SLACK_EVENTS_TOKEN"), "/slack/events", app)
 
 # Initialize a Web API client
+
+print(os.environ.get("SLACK_TOKEN"))
+print(os.environ.get("SLACK_EVENTS_TOKEN"))
+
+
 slack_web_client = WebClient(token=os.environ.get("SLACK_TOKEN"))
 
 
@@ -31,15 +37,12 @@ mongo.init_app(app)
 users_collection = mongo.db.userinfo
 question_collection = mongo.db.questionResponses
 
+r = redis.Redis()
+q = Queue(connection=r)
 
 global ref_bot
 
 
-
-@celery.task
-def my_background_task(arg1, arg2):
-    # some long running task here
-    print("yo")
 
 def first_question(channel,user_id):
     """Craft the CoinBot, flip the coin and send the message to the channel
@@ -49,8 +52,6 @@ def first_question(channel,user_id):
     data.startReflection(channel, user_id,users_collection)
     # Create a new Reflection Bot
     ref_bot = reflectionBot()
-    #task = my_background_task.apply_async(args=[10, 20], countdown=30)
-
     # Get the onboarding message payload
     message = ref_bot.get_message_payload(users_collection, channel)
     slack_web_client.chat_postMessage(**message)
@@ -83,6 +84,8 @@ def message(payload):
     text = event.get("text")
     #print(text,"----",event, "*************\n\n")
 
+    if not text or text == "pass":
+        return
 
     # Check and see if the activation phrase was in the text of the message.
     # If so, execute the code to flip a coin.
@@ -94,6 +97,15 @@ def message(payload):
         # Execute the flip_coin function and send the results of
         # flipping a coin to the channel
         return first_question(channel_id, user_id)
+    elif "remind me" in text.lower():
+        channel_id = event.get("channel")
+        time_to_remind = natural_time.natural_time(text.lower())
+        #today = date.today()
+        action_item = data.getActionItem(channel_id, question_collection)
+        #now = datetime.now()
+        #print("time to remind:", time_to_remind, "now:", now, "*****")
+        #print(time_to_remind - now)
+        q.enqueue(background_task, channel_id, 10, action_item)
     elif text != "This content can't be displayed.":
         user_id = event.get("user")
         channel_id = event.get("channel")

@@ -47,4 +47,8 @@ def storeResponse(channel, user_id,  response, question_collection, users_collec
 		question_collection.update({'user_id': user_id}, {'$push': {questionNum: response}})
 		
 
-
+def getActionItem(channel, question_collection):
+	response = question_collection.find_one({"channel_id": channel})['7']
+	print(response)
+	response = response[len(response)-1]
+	return response
