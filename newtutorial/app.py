@@ -21,18 +21,20 @@ mongo = PyMongo()
 app = Flask(__name__)
 
 # Create an events adapter and register it to an endpoint in the slack app for event injestion.
-slack_events_adapter = SlackEventAdapter(os.environ.get("SLACK_EVENTS_TOKEN"), "/slack/events", app)
+slack_events_adapter = SlackEventAdapter(
+    os.environ.get("SLACK_EVENTS_TOKEN"), "/slack/events", app)
 
 # Initialize a Web API client
 
 print(os.environ.get("SLACK_TOKEN"))
 print(os.environ.get("SLACK_EVENTS_TOKEN"))
+print(os.environ.get("SLACK_BOT_TOKEN"))
 
 
-slack_web_client = WebClient(token=os.environ.get("SLACK_TOKEN"))
+slack_web_client = WebClient(token=os.environ.get("SLACK_BOT_TOKEN"))
 
 
-app.config["MONGO_URI"] = "mongodb+srv://olivia:oliviapassword@cluster0.1rphe.mongodb.net/myUsers?retryWrites=true&w=majority"
+app.config["MONGO_URI"] = "mongodb+srv://neha:metacognition2021@cluster0.1rphe.mongodb.net/myUsers?retryWrites=true&w=majority"
 mongo.init_app(app)
 users_collection = mongo.db.userinfo
 question_collection = mongo.db.questionResponses
@@ -43,28 +45,40 @@ q = Queue(connection=r)
 global ref_bot
 
 
-
-def first_question(channel,user_id):
+def first_question(channel, user_id):
     """Craft the CoinBot, flip the coin and send the message to the channel
     """
     global ref_bot
 
-    data.startReflection(channel, user_id,users_collection)
+    result = slack_web_client.users_info(
+        token=os.environ.get("SLACK_BOT_TOKEN"),
+        user=user_id)
+
+    print("result\n", result["user"]["real_name"], "\n\n")
+    data.startReflection(
+        channel, user_id, result["user"]["real_name"], users_collection)
     # Create a new Reflection Bot
     ref_bot = reflectionBot()
     # Get the onboarding message payload
     message = ref_bot.get_message_payload(users_collection, channel)
     slack_web_client.chat_postMessage(**message)
 
-def second_question(channel, text, user_id):
-    #this is triggered essentially any other time a message is sent to the bot...
 
-    #this is where we should store the response
+def second_question(channel, text, user_id):
+    # this is triggered essentially any other time a message is sent to the bot...
+
+    # this is where we should store the response
     global ref_bot
-    data.storeResponse(channel, user_id,  text, question_collection, users_collection)
-    data.incrementQuestion(channel, users_collection)  
+    result = slack_web_client.users_info(
+        token=os.environ.get("SLACK_BOT_TOKEN"),
+        user=user_id)
+
+    data.storeResponse(channel, user_id, result["user"]["real_name"], text,
+                       question_collection, users_collection)
+    data.incrementQuestion(channel, users_collection)
+
     message = ref_bot.get_message_payload(users_collection, channel)
- 
+
     # Post the onboarding message in Slack
     slack_web_client.chat_postMessage(**message)
 
@@ -76,8 +90,8 @@ def message(payload):
     """Parse the message event, and if the activation string is in the text,
     simulate a coin flip and send the result.
     """
-    #print("message\n\n\n")
-    #print("payload: ", payload, "\n\n\n\n")
+    print("message\n\n\n")
+    print("payload: ", payload, "\n\n\n\n")
     # Get the event data from the payload
     event = payload.get("event", {})
     # Get the text from the event that came through
@@ -112,7 +126,7 @@ def message(payload):
         return second_question(channel_id, text, user_id)
 
         #channel_id = event.get("channel")
-    	#return question(channel_id)
+        # return question(channel_id)
 
         # Execute the flip_coin function and send the results of
         # flipping a coin to the channel
